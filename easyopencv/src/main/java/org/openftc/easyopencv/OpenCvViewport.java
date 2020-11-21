@@ -528,7 +528,11 @@ public class OpenCvViewport extends SurfaceView implements SurfaceHolder.Callbac
                         catch (InterruptedException e)
                         {
                             e.printStackTrace();
-                            Thread.currentThread().interrupt();
+                            //Note: we actually don't re-interrupt ourselves here, because interrupts are also
+                            //used to simply make sure we properly pick up a transition to the PAUSED state, not
+                            //just when we're trying to close. If we're trying to close, then exitRequested will
+                            //be set, and since we break immediately right here, the close will be handled cleanly.
+                            //Thread.currentThread().interrupt();
                             break;
                         }
 
@@ -603,7 +607,11 @@ public class OpenCvViewport extends SurfaceView implements SurfaceHolder.Callbac
                         catch (InterruptedException e)
                         {
                             e.printStackTrace();
-                            Thread.currentThread().interrupt();
+                            //Note: we actually don't re-interrupt ourselves here, because interrupts are also
+                            //used to simply make sure we properly pick up a transition to the PAUSED state, not
+                            //just when we're trying to close. If we're trying to close, then exitRequested will
+                            //be set, and since we break immediately right here, the close will be handled cleanly.
+                            //Thread.currentThread().interrupt();
                         }
                         break;
                     }
