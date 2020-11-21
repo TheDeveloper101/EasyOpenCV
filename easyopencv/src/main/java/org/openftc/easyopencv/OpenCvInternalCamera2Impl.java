@@ -366,8 +366,10 @@ public class OpenCvInternalCamera2Impl extends OpenCvCameraBase implements OpenC
             e.printStackTrace();
             Thread.currentThread().interrupt();
         }
-
-        sync.unlock();
+        finally
+        {
+            sync.unlock();
+        }
     }
 
     @Override
