@@ -24,6 +24,8 @@ package org.openftc.easyopencv;
 import android.content.ComponentCallbacks;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.media.MediaCodec;
+import android.media.MediaRecorder;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,6 +56,7 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.CountDownLatch;
@@ -85,6 +88,11 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
     private ComponentCallbacksForRotation componentCallbacksForRotation = new ComponentCallbacksForRotation();
     private volatile boolean hasBeenCleanedUp = false;
     private final Object pipelineChangeLock = new Object();
+    private MediaRecorder mediaRecorder;
+    private Surface mediaRecorderSurface;
+    private long mediaRecorderSurfaceNativeHandle;
+    private int width;
+    private int height;
 
     /*
      * NOTE: We cannot simply pass `new OpModeNotifications()` inline to the call
@@ -145,6 +153,9 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
         msTotalFrameProcessingTimeRollingAverage = new MovingStatistics(30);
         timer = new ElapsedTime();
 
+        this.width = width;
+        this.height = height;
+
         if(viewport != null)
         {
             viewport.setSize(getFrameSizeAfterRotation(width, height, rotation));
@@ -155,6 +166,11 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
 
     public synchronized final void cleanupForEndStreaming()
     {
+        if(mediaRecorder != null)
+        {
+            stopRecordingPipeline();
+        }
+
         matToUseIfPipelineReturnedCropped = null;
 
         if(viewport != null)
@@ -293,6 +309,90 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
         currentFrameStartTime = System.currentTimeMillis();
     }
 
+    @Override
+    public synchronized void startRecordingPipeline(PipelineRecordingParameters parameters)
+    {
+        System.out.println("startRecordingPipeline()");
+
+        if(!isStreaming())
+        {
+            throw new IllegalStateException("A recording session may only be started once a streaming session is already in flight");
+        }
+
+        if(mediaRecorder != null)
+        {
+            throw new IllegalStateException("A recording session is already ongoing!");
+        }
+
+        try
+        {
+            mediaRecorderSurface = MediaCodec.createPersistentInputSurface();
+            mediaRecorderSurfaceNativeHandle = nativeGetSurfaceHandle(mediaRecorderSurface);
+
+            mediaRecorder = new MediaRecorder();
+            mediaRecorder.setInputSurface(mediaRecorderSurface);
+            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            mediaRecorder.setOutputFormat(parameters.outputformat);
+            mediaRecorder.setVideoSize(width, height);
+            mediaRecorder.setVideoEncoder(parameters.encoder);
+            mediaRecorder.setVideoEncodingBitRate(parameters.bitrate);
+            mediaRecorder.setOutputFile(parameters.path);
+            mediaRecorder.setCaptureRate(parameters.frameRate);
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+
+            if(viewport != null)
+            {
+                viewport.setRecording(true);
+            }
+        }
+        catch (IOException e)
+        {
+            nativeReleaseSurfaceHandle(mediaRecorderSurfaceNativeHandle);
+            mediaRecorderSurfaceNativeHandle = 0;
+            mediaRecorderSurface.release();
+            mediaRecorderSurface = null;
+            mediaRecorder = null;
+
+            throw new OpenCvCameraException("Unable to begin recording");
+        }
+        catch (Exception e)
+        {
+            nativeReleaseSurfaceHandle(mediaRecorderSurfaceNativeHandle);
+            mediaRecorderSurfaceNativeHandle = 0;
+            mediaRecorderSurface.release();
+            mediaRecorderSurface = null;
+            mediaRecorder = null;
+
+            throw e;
+        }
+        finally
+        {
+            System.out.println("...startRecordingPipeline()");
+        }
+    }
+
+    @Override
+    public synchronized void stopRecordingPipeline()
+    {
+        System.out.println("stopRecordingPipeline()");
+        if(mediaRecorder != null)
+        {
+            mediaRecorder.stop();
+            nativeReleaseSurfaceHandle(mediaRecorderSurfaceNativeHandle);
+            mediaRecorderSurfaceNativeHandle = 0;
+            mediaRecorderSurface.release();
+            mediaRecorderSurface = null;
+            mediaRecorder = null;
+
+            if(viewport != null)
+            {
+                viewport.setRecording(false);
+            }
+        }
+        System.out.println("...stopRecordingPipeline()");
+    }
+
     protected synchronized void handleFrame(Mat frame)
     {
         try
@@ -350,6 +450,11 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
         {
             if(pipeline == null)
             {
+                if(mediaRecorder != null)
+                {
+                    nativeCopyMatToSurface(mediaRecorderSurfaceNativeHandle, frame.nativeObj);
+                }
+
                 viewport.post(frame);
             }
             else if(userProcessedFrame == null)
@@ -413,6 +518,11 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
                 userProcessedFrame.copyTo(matToUseIfPipelineReturnedCropped.submat(
                         new Rect(0,0,userProcessedFrame.cols(), userProcessedFrame.rows())));
 
+                if(mediaRecorder != null)
+                {
+                    nativeCopyMatToSurface(mediaRecorderSurfaceNativeHandle, matToUseIfPipelineReturnedCropped.nativeObj);
+                }
+
                 //Send that correct size Mat to the viewport
                 viewport.post(matToUseIfPipelineReturnedCropped);
             }
@@ -420,8 +530,12 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
             {
                 /*
                  * Yay, smart user! They gave us the frame size we were expecting!
-                 * Go ahead and send it right on over to the viewport.
+                 * Go ahead and send it right on over to the viewport.            Toast.makeText(hardwareMap.appContext, "tapped", Toast.LENGTH_SHORT).show();
                  */
+                if(mediaRecorder != null)
+                {
+                    nativeCopyMatToSurface(mediaRecorderSurfaceNativeHandle, userProcessedFrame.nativeObj);
+                }
                 viewport.post(userProcessedFrame);
             }
         }
@@ -779,4 +893,11 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
     protected abstract OpenCvCameraRotation getDefaultRotation();
     protected abstract int mapRotationEnumToOpenCvRotateCode(OpenCvCameraRotation rotation);
     protected abstract boolean cameraOrientationIsTiedToDeviceOrientation();
+    protected abstract boolean isStreaming();
+
+    private native long nativeGetSurfaceHandle(Surface surface);
+    private native void nativeReleaseSurfaceHandle(long handle);
+    private native void nativeCopyMatToSurface(long handle, long matPtr);
+
+    static {System.loadLibrary("EasyOpenCV");}
 }

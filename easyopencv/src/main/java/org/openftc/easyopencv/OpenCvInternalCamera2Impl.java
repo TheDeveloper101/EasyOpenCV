@@ -146,6 +146,12 @@ public class OpenCvInternalCamera2Impl extends OpenCvCameraBase implements OpenC
     }
 
     @Override
+    protected boolean isStreaming()
+    {
+        return isStreaming;
+    }
+
+    @Override
     public void openCameraDevice()
     {
         sync.lock();
