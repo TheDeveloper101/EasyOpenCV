@@ -754,6 +754,7 @@ public class OpenCvViewport extends SurfaceView implements SurfaceHolder.Callbac
         void drawOptimizingEfficiency(Canvas canvas)
         {
             int x_offset_statbox = 0;
+            int y_offset_statbox = 0;
 
             /*
              * We need to draw minding the HEIGHT we have to work with; width is not an issue
@@ -780,14 +781,22 @@ public class OpenCvViewport extends SurfaceView implements SurfaceHolder.Callbac
              */
             else
             {
+                // Width: we use the max we have, since horizontal bounds are hit before vertical bounds
                 int scaledWidth = canvas.getWidth();
+
+                // Height: calculate a scaled height assuming width is maxed for the canvas
                 int scaledHeight = (int) Math.round(canvas.getWidth() / aspectRatio);
+
+                // We want to center the image in the viewport
+                int topLeftY = Math.abs(canvas.getHeight()-scaledHeight)/2;
+                int topLeftX = 0;
+                y_offset_statbox = Math.abs(canvas.getHeight()-scaledHeight)/2;
 
                 //Draw the bitmap, scaling it to the maximum size that will fit in the viewport
                 canvas.drawBitmap(
                         bitmapFromMat,
                         null,
-                        new Rect(0,0, scaledWidth, scaledHeight),
+                        createRect(topLeftX,topLeftY, scaledWidth, scaledHeight),
                         null);
             }
 
@@ -799,7 +808,7 @@ public class OpenCvViewport extends SurfaceView implements SurfaceHolder.Callbac
 
             Rect rect = createRect(
                     x_offset_statbox,
-                    canvas.getHeight()-statBoxH,
+                    canvas.getHeight()-statBoxH-y_offset_statbox,
                     statBoxW,
                     statBoxH
             );
