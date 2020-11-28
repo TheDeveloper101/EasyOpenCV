@@ -153,12 +153,14 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
         msTotalFrameProcessingTimeRollingAverage = new MovingStatistics(30);
         timer = new ElapsedTime();
 
-        this.width = width;
-        this.height = height;
+        Size sizeAfterRotation = getFrameSizeAfterRotation(width, height, rotation);
+
+        this.width = sizeAfterRotation.getWidth();
+        this.height = sizeAfterRotation.getHeight();
 
         if(viewport != null)
         {
-            viewport.setSize(getFrameSizeAfterRotation(width, height, rotation));
+            viewport.setSize(sizeAfterRotation);
             viewport.setOptimizedViewRotation(getOptimizedViewportRotation(rotation, AppUtil.getInstance().getActivity().getWindowManager().getDefaultDisplay().getRotation()));
             viewport.activate();
         }
@@ -534,6 +536,7 @@ public abstract class OpenCvCameraBase implements OpenCvCamera, CameraStreamSour
                  */
                 if(mediaRecorder != null)
                 {
+                    //System.out.println(String.format("Delivering to native code: %dx%dx%d isCont=%s", userProcessedFrame.width(), userProcessedFrame.height(), userProcessedFrame.channels(), Boolean.toString(userProcessedFrame.isContinuous())));
                     nativeCopyMatToSurface(mediaRecorderSurfaceNativeHandle, userProcessedFrame.nativeObj);
                 }
                 viewport.post(userProcessedFrame);

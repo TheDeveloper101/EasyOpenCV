@@ -24,6 +24,7 @@
 #include <opencv2/imgproc.hpp>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
+#include <android/log.h>
 
 using namespace cv;
 
@@ -36,7 +37,59 @@ Java_org_openftc_easyopencv_OpenCvCameraBase_nativeCopyMatToSurface(JNIEnv *env,
     ANativeWindow_Buffer nativeWindowBuffer;
     ANativeWindow_lock(window, &nativeWindowBuffer, NULL);
 
-    memcpy(nativeWindowBuffer.bits, mat->data, mat->rows*mat->cols*4);
+    //__android_log_print(ANDROID_LOG_DEBUG, "Native", "Native buffer format %d [%dx%d] stride %d\n",
+    //        nativeWindowBuffer.format, nativeWindowBuffer.width, nativeWindowBuffer.height, nativeWindowBuffer.stride);
+
+    /*
+     * If the stride of the encoder buffer is the same as the
+     * width of our Mat buffer, our life is easy, we can just
+     * do the copy in one go.
+     */
+    if(nativeWindowBuffer.stride == mat->cols)
+    {
+        memcpy(nativeWindowBuffer.bits, mat->data, mat->cols*mat->rows*4);
+    }
+    /*
+     * Ugh, the stride doesn't match the width. So, we have to do
+     * a memcpy for each line of the source image, padding the dst
+     * pointer with the difference between the stride and width.
+     */
+    else
+    {
+        int width = mat->cols;
+        int height = mat->rows;
+        int bitsPerPixel = 4;
+        int scanline_length = width*bitsPerPixel;
+        int scanline_end_padding = (nativeWindowBuffer.stride - width) * bitsPerPixel;
+
+        for(int i = 0; i < height; i++)
+        {
+            memcpy((uint8_t*)nativeWindowBuffer.bits + i*(scanline_length+scanline_end_padding), mat->data+(i*scanline_length), scanline_length);
+        }
+    }
+
+    ANativeWindow_unlockAndPost(window);
+}
+
+//    uint bytesPerRow = 4*mat->cols;
+
+//    for(int i = 0; i < mat->rows; i++)
+//    {
+//        for(uint8_t* ptr = mat->data+i*bytesPerRow; ptr < mat->data+(i+1)*bytesPerRow; ptr+=4)
+//        {
+//            *ptr = (uint8_t) i;
+//            *(ptr+1) = 0;
+//            *(ptr+2) = 0;
+//            *(ptr+3) = 255;
+//        }
+//    }
+//
+//    rectangle(*mat, Point(50,50), Point(100,100), Scalar(0,0,255,255), 2);
+
+//    for(uint32_t* ptr = (uint32_t*) mat->data; (uint32_t)ptr < (uint32_t) ((mat->data)+(240*4*160)); ptr++)
+//    {
+//        *ptr = 0xFF0000FF;
+//    }
 
 //    uint8_t* endOfBuff = mat->data + (mat->rows * mat->cols * 4);
 //    uint8_t* startOfBuff = mat->data+3;
@@ -44,9 +97,6 @@ Java_org_openftc_easyopencv_OpenCvCameraBase_nativeCopyMatToSurface(JNIEnv *env,
 //    {
 //        *alphaPtr = 255;
 //    }
-
-    ANativeWindow_unlockAndPost(window);
-}
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_openftc_easyopencv_OpenCvCameraBase_nativeGetSurfaceHandle(JNIEnv *env, jobject thiz, jobject surface)

@@ -44,4 +44,5 @@ set_target_properties(openCvNative PROPERTIES IMPORTED_LOCATION
 target_link_libraries(
         EasyOpenCV
         openCvNative
+        log
         android)
