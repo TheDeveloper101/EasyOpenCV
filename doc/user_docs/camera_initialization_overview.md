@@ -24,23 +24,23 @@ All types of supported cameras are created by invoking the `OpenCvCameraFactory.
  - To create an `OpenCvInternalCamera` instance:
 
  The first parameter specifies the desired camera (FRONT or BACK) and the second (optional) parameter specifies the view ID in which to insert the live preview. If you want to use a live preview, see section 1. If not, simply omit the second parameter.
-     ```java
-     // With live preview
-     OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK, cameraMonitorViewId);
+ ```java
+ // With live preview
+ OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK, cameraMonitorViewId);
 
-     // Without live preview
-     OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK);
-     ```
+ // Without live preview
+ OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK);
+ ```
  - To create an `OpenCvInternalCamera2` instance:
 
  The first parameter specifies the desired camera (FRONT or BACK) and the second (optional) parameter specifies the view ID in which to insert the live preview. If you want to use a live preview, see section 1. If not, simply omit the second parameter.
-     ```java
-     // With live preview
-     OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera2(OpenCvInternalCamera2.CameraDirection.BACK, cameraMonitorViewId);
+ ```java
+ // With live preview
+ OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera2(OpenCvInternalCamera2.CameraDirection.BACK, cameraMonitorViewId);
 
-     // Without live preview
-     OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera2(OpenCvInternalCamera2.CameraDirection.BACK);
-     ```
+ // Without live preview
+ OpenCvCamera camera = OpenCvCameraFactory.getInstance().createInternalCamera2(OpenCvInternalCamera2.CameraDirection.BACK);
+ ```
 
  - To create an `OpenCvWebcam` instance:
 
