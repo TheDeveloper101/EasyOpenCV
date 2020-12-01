@@ -2,7 +2,10 @@
 
 All camera interfaces implement the common OpenCvCamera interface. Extended functionality specific to each type of camera is exposed in individual interfaces:
  - OpenCvInternalCamera for the Android camera v1 API
+   - Offers slightly lower overhead time compared to v2
+   - Is **not** currently compatible with FTC Dash Camera stream (but the others are)
  - OpenCvInternalCamera2 for the Android camera v2 API
+   - Offers much more fine grained control over the camera sensor compared ot v1, such as ISO, exposure, and focus control.
  - OpenCvWebcam for the FTC SDK's external webcam API
 
 # Overview of Program Flow for Initializing a Camera
