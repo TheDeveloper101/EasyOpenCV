@@ -32,7 +32,7 @@ class ConvertToGreyPipeline extends OpenCvPipeline
     @Override
     public Mat processFrame(Mat input)
     {
-        Imgproc.cvtColor(input, yCrCb, Imgproc.COLOR_RGB2GRAY);
+        Imgproc.cvtColor(input, grey, Imgproc.COLOR_RGB2GRAY);
         return grey;
     }
 }
@@ -71,8 +71,45 @@ Since pipelines are not run on your OpMode thread, your vision processing will n
 
 ### Getting data to the OpMode thread
 
-A pipeline with cool image processing is great and all, but won't do you much good if you can't actually obtain results from it in your robot control code. The recommended way to do this is to have your `processFrame(...)` function store the analysis results in an instance variable of the pipeline class right before it returns. Then you can have some sort of `getLastResults()` function which can return that instance variable. From your robot control code you could then call:
+A pipeline with cool image processing is great and all, but won't do you much good if you can't actually obtain results from it in your robot control code. The recommended way to do this is to have your `processFrame(...)` function store the analysis results in an instance variable of the pipeline class right before it returns.
+
+```java
+class FoobarPipeline extends OpenCvPipeline
+{
+    int lastResult = 0;
+
+    @Override
+    public Mat processFrame(Mat input)
+    {
+        // ... some image processing here ...
+
+        if(...)
+        {
+            lastResult = 1;
+        }
+        else if(...)
+        {
+            lastResult = 2
+        }
+        else if(...)
+        {
+            lastResult = 3;
+        }
+    }
+
+    public int getLatestResults()
+    {
+        return lastResult;
+    }
+}
+```
+
+Then you can have some sort of `getLastResults()` function which can return that instance variable. From your robot control code you could then call:
 ```
 <OBJECT_TYPE_HERE> results = pipeline.getLatestResults()
 ```
 Since this would simply be returning the cached results from the last analysis, the robot control code would not incur any performance penalty by calling this.
+
+### Further Information
+
+EasyOpenCV doesn't provide any image processing functions of its own. It's simply a framework for integrating OpenCV code into the FTC SDK. Please consult the [OpenCV documentation](https://docs.opencv.org/master/) for information about the OpenCV image processing functions.
